@@ -75,27 +75,52 @@ export async function handler(event: unknown) {
 
 // ---------------------------------------------------------------------------
 
+/**
+ * Pull the Report out of whatever envelope the Bedrock Flow Lambda node delivers.
+ * Observed shape: { messageVersion, node: { name, inputs: [{ name, value }] }, flow }
+ * where `value` is `{ document: "<JSON string of the Report>" }` (the synthesis
+ * prompt node wraps its text output in `document`). We also tolerate direct invokes
+ * and action-group-style envelopes. Every candidate is `resolve()`d — strings are
+ * JSON-parsed and `{document}` wrappers unwrapped, recursively — until we find an
+ * object with an `issues` array.
+ */
 function extractReport(event: unknown): unknown {
-  if (typeof event === "string") return safeParse(event);
-  if (!event || typeof event !== "object") return {};
-  const e = event as Record<string, unknown>;
-
-  if (isReportLike(e)) return e;
-  if (e.report) return typeof e.report === "string" ? safeParse(e.report) : e.report;
-  if (e.input) return typeof e.input === "string" ? safeParse(e.input) : e.input;
-
-  // Flow node `inputs: [{ name, value }]` shape.
-  if (Array.isArray(e.inputs)) {
-    for (const item of e.inputs as Array<Record<string, unknown>>) {
-      const v = item?.value;
-      const parsed = typeof v === "string" ? safeParse(v) : v;
-      if (isReportLike(parsed)) return parsed;
+  const candidates: unknown[] = [event];
+  if (event && typeof event === "object") {
+    const e = event as Record<string, unknown>;
+    const node = e.node as Record<string, unknown> | undefined;
+    // Flow Lambda node: inputs live under event.node.inputs (or, defensively, top-level).
+    for (const arr of [node?.inputs, e.inputs]) {
+      if (Array.isArray(arr)) {
+        for (const item of arr) candidates.push((item as Record<string, unknown>)?.value);
+      }
     }
+    candidates.push(e.report, e.input, e.body, e.payload);
   }
-  // Last resort: the body of an action-group style envelope.
-  const body = (e.body ?? (e as Record<string, unknown>)["payload"]) as unknown;
-  if (typeof body === "string") return safeParse(body);
-  return e;
+  for (const c of candidates) {
+    const r = resolve(c);
+    if (isReportLike(r)) return r;
+  }
+  // Diagnostic only on failure to locate a report-shaped payload.
+  logger.warn("report-dispatcher could not extract a report from the event", {
+    raw: JSON.stringify(event ?? null).slice(0, 2000),
+  });
+  return {};
+}
+
+/** Recursively unwrap strings (JSON.parse) and `{document}` wrappers to a plain value. */
+function resolve(v: unknown, depth = 0): unknown {
+  if (depth > 6 || v == null) return v;
+  if (typeof v === "string") {
+    const parsed = safeParse(v);
+    return parsed === undefined ? v : resolve(parsed, depth + 1);
+  }
+  if (typeof v === "object") {
+    const o = v as Record<string, unknown>;
+    if (isReportLike(o)) return o;
+    if ("document" in o) return resolve(o.document, depth + 1);
+  }
+  return v;
 }
 
 // Plain boolean (not a type predicate): a predicate of the same type as the input
@@ -108,7 +133,7 @@ function safeParse(s: string): unknown {
   try {
     return JSON.parse(s);
   } catch {
-    return {};
+    return undefined;
   }
 }
 
