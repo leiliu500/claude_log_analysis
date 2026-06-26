@@ -1,0 +1,83 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Generic Log Analyzer Action Group",
+    "version": "1.0.0",
+    "description": "Tools for listing and reading arbitrary log files stored in S3."
+  },
+  "paths": {
+    "/list-log-objects": {
+      "post": {
+        "operationId": "listLogObjects",
+        "description": "List the most recent log objects under a prefix in the log bucket.",
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "prefix": { "type": "string", "description": "S3 key prefix to filter by. Optional." },
+                  "max": { "type": "integer", "description": "Maximum objects to return. Default 25." }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Object listing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "objectCount": { "type": "integer" },
+                    "objects": { "type": "array", "items": { "type": "object" } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/read-log-object": {
+      "post": {
+        "operationId": "readLogObject",
+        "description": "Read the text content of a single log object by key.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["key"],
+                "properties": {
+                  "key": { "type": "string", "description": "The S3 object key to read." }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Object content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "key": { "type": "string" },
+                    "contentLength": { "type": "integer" },
+                    "content": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

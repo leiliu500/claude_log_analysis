@@ -1,0 +1,83 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Email Alert Analyzer Action Group",
+    "version": "1.0.0",
+    "description": "Tools for listing and parsing inbound alert emails stored in S3."
+  },
+  "paths": {
+    "/list-alert-emails": {
+      "post": {
+        "operationId": "listAlertEmails",
+        "description": "List the most recently received alert emails.",
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "max": { "type": "integer", "description": "Maximum emails to return. Default 25." }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Email listing",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "emailCount": { "type": "integer" },
+                    "emails": { "type": "array", "items": { "type": "object" } }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/read-alert-email": {
+      "post": {
+        "operationId": "readAlertEmail",
+        "description": "Read and parse a single alert email into from/subject/date/body.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["key"],
+                "properties": {
+                  "key": { "type": "string", "description": "The S3 object key of the email." }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Parsed email",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "from": { "type": "string" },
+                    "subject": { "type": "string" },
+                    "date": { "type": "string" },
+                    "body": { "type": "string" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

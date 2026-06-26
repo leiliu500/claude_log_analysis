@@ -1,0 +1,65 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "CloudWatch Logs Analyzer Action Group",
+    "version": "1.0.0",
+    "description": "Tools for querying Amazon CloudWatch Logs Insights to investigate errors and anomalies."
+  },
+  "paths": {
+    "/run-insights-query": {
+      "post": {
+        "operationId": "runInsightsQuery",
+        "description": "Run a CloudWatch Logs Insights query over one or more log groups for a recent time window. If no queryString is supplied, a default error/exception scan is used.",
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "logGroupNames": {
+                    "type": "string",
+                    "description": "Comma-separated CloudWatch log group names to query. Defaults to the system-configured groups when omitted."
+                  },
+                  "queryString": {
+                    "type": "string",
+                    "description": "A CloudWatch Logs Insights query. Omit to use the default error/exception scan."
+                  },
+                  "windowMinutes": {
+                    "type": "integer",
+                    "description": "How many minutes back from now to search. Default 60."
+                  },
+                  "limit": {
+                    "type": "integer",
+                    "description": "Maximum rows to return. Default 100."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Query results",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": { "type": "string" },
+                    "recordsMatched": { "type": "number" },
+                    "rowCount": { "type": "integer" },
+                    "rows": {
+                      "type": "array",
+                      "items": { "type": "object", "additionalProperties": { "type": "string" } }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
